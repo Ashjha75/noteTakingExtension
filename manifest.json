@@ -2,13 +2,30 @@
   "manifest_version": 3,
   "name": "Dark Notes",
   "version": "1.0.0",
-  "description": "VS Code-like note-taking extension with file system access",
+  "description": "VS Code-like note-taking extension with Google Drive sync",
   "permissions": [
     "storage",
     "activeTab",
-    "scripting"
+    "scripting",
+    "tabs",
+    "identity"
   ],
+  "host_permissions": [
+    "https://www.googleapis.com/*"
+  ],
+  "oauth2": {
+    "client_id": "YOUR_CLIENT_ID.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/drive.file"
+    ]
+  },
   "chrome_url_overrides": {
     "newtab": "newtab.html"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Open Dark Notes"
   }
 }

@@ -71,6 +71,26 @@ body {
     background-color: var(--hover-bg-color);
 }
 
+/* Google Drive button styling */
+.drive-button {
+    background-color: #4285F4;
+    color: white;
+    margin-top: 10px;
+    border: none;
+}
+
+.drive-button:hover {
+    background-color: #357ae8;
+}
+
+.drive-connected {
+    background-color: #0F9D58;
+}
+
+.drive-connected:hover {
+    background-color: #0b8043;
+}
+
 .file-tree {
     flex: 1;
     padding: 10px 0;
