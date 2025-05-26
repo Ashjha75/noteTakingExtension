@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dark Notes</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar for file/folder management -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>Explorer</h2>
+            </div>
+            <div class="sidebar-actions">
+                <button id="openFolderBtn">Open Folder</button>
+                <button id="newFileBtn">New File</button>
+            </div>
+            <div class="file-tree" id="fileTree">
+                <!-- File tree will be populated here dynamically -->
+                <div class="empty-message">No folder opened yet</div>
+            </div>
+        </div>
+
+        <!-- Main editor area -->
+        <div class="editor-container">
+            <div class="editor-header">
+                <div id="currentFilePath">Untitled</div>
+                <div class="editor-actions">
+                    <button id="previewToggleBtn">Preview</button>
+                    <div class="status-bar" id="statusBar"></div>
+                </div>
+            </div>
+            <div class="editor-area">
+                <textarea id="noteEditor" placeholder="Start typing your notes here..."></textarea>
+                <div id="previewArea" class="preview-area hidden"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="markdown.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

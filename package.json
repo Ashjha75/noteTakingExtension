@@ -1,0 +1,10 @@
+{
+  "name": "dark-notes",
+  "version": "1.0.0",
+  "description": "VS Code-like note-taking extension with dark mode UI",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "author": "",
+  "license": "MIT"
+}
