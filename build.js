@@ -12,6 +12,7 @@ const filesToCopy = [
   'styles.css',
   'script.js',
   'markdown.js',
+  'gdrive.js',
   'README.md',
   'INSTALL.md'
 ];

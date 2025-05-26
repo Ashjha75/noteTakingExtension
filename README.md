@@ -23,6 +23,7 @@ Chrome restricts the File System Access API (used for opening folders and saving
 - Overrides the new tab page with a dark-themed note editor
 - VS Code-like sidebar for file/folder navigation
 - Local file system access for saving and loading notes
+- Google Drive integration for cloud storage
 - Keyboard shortcuts (Ctrl+S / Cmd+S) for saving
 - File tree navigation for .md and .txt files
 - Auto-saving to Chrome storage
@@ -35,12 +36,32 @@ Chrome restricts the File System Access API (used for opening folders and saving
 4. Use the editor to write notes
 5. Press Ctrl+S (or Cmd+S on macOS) to save your notes to a file
 6. Create new files with the "New File" button
+7. Use the "Connect Google Drive" button to save and manage notes in the cloud
+
+## Google Drive Setup
+
+To use Google Drive integration:
+
+1. Create a Google Cloud Platform project at https://console.cloud.google.com
+2. Enable the Google Drive API for your project
+3. Create OAuth 2.0 credentials (Web application type)
+4. Add `chrome-extension://YOUR_EXTENSION_ID` to the authorized JavaScript origins
+5. Copy your client ID and update it in the manifest.json file:
+   ```json
+   "oauth2": {
+     "client_id": "YOUR_CLIENT_ID.apps.googleusercontent.com",
+     "scopes": ["https://www.googleapis.com/auth/drive.file"]
+   }
+   ```
+6. Reload the extension and click "Connect Google Drive" to authenticate
 
 ## Permissions Required
 
 - `storage`: For auto-saving notes
 - `activeTab`: For interacting with the current tab
 - `scripting`: For content script injection (potential future features)
+- `identity`: For Google Drive integration
+- `https://www.googleapis.com/*`: For accessing Google Drive API
 - File System Access API permissions: For reading/writing local files
 
 ## Installation (Developer Mode)

@@ -247,6 +247,23 @@ async function openFile(fileNode) {
         }
     }
     
+    // Handle Google Drive files
+    if (state.usingGoogleDrive && fileNode.driveId) {
+        await handleDriveFileClick(fileNode);
+        
+        // Highlight the active file in the file tree
+        clearActiveFileStyles();
+        const fileElements = document.querySelectorAll('.file-item');
+        for (const el of fileElements) {
+            if (el.textContent === fileNode.name) {
+                el.classList.add('active');
+                break;
+            }
+        }
+        
+        return;
+    }
+    
     try {
         // Get the file handle and read its contents
         const fileHandle = fileNode.handle;
@@ -258,6 +275,7 @@ async function openFile(fileNode) {
         state.currentFileHandle = fileHandle;
         state.currentContent = content;
         state.hasUnsavedChanges = false;
+        state.currentGDriveFileId = null; // Reset Google Drive ID when opening a local file
         
         // Update UI
         currentFilePathEl.textContent = fileNode.path;
@@ -526,6 +544,12 @@ async function handleKeyboardShortcuts(event) {
 async function saveCurrentFile() {
     // Get the content from the editor
     const content = noteEditor.value;
+    
+    // If using Google Drive and we have a file ID or are in Google Drive mode
+    if (state.usingGoogleDrive) {
+        await saveFileToDrive();
+        return;
+    }
     
     try {
         // If we have a file handle, save to that file

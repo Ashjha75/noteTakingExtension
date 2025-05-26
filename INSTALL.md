@@ -1,6 +1,6 @@
 # Installation Guide for Dark Notes Chrome Extension
 
-This guide will walk you through installing and setting up the Dark Notes Chrome extension in developer mode.
+This guide will walk you through installing and setting up the Dark Notes Chrome extension in developer mode, including Google Drive integration.
 
 ## Prerequisites
 
