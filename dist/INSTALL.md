@@ -1,6 +1,6 @@
 # Installation Guide for Dark Notes Chrome Extension
 
-This guide will walk you through installing and setting up the Dark Notes Chrome extension in developer mode.
+This guide will walk you through installing and setting up the Dark Notes Chrome extension in developer mode, including Google Drive integration.
 
 ## Prerequisites
 
@@ -40,6 +40,47 @@ This guide will walk you through installing and setting up the Dark Notes Chrome
    - Try writing some notes in the editor
    - Test using Ctrl+S (Cmd+S on Mac) to save files
    - Click "Open Folder" to test file system access
+
+## Setting Up Google Drive Integration
+
+To enable Google Drive integration:
+
+1. **Create a Google Cloud Platform Project**
+   - Go to the [Google Cloud Console](https://console.cloud.google.com/)
+   - Create a new project (or select an existing one)
+
+2. **Enable Google Drive API**
+   - In your project, go to "APIs & Services" > "Library"
+   - Search for "Google Drive API" and enable it
+
+3. **Create OAuth Credentials**
+   - Go to "APIs & Services" > "Credentials"
+   - Click "Create Credentials" > "OAuth client ID"
+   - Set application type to "Chrome App"
+   - Add your extension ID in the appropriate field
+   
+4. **Get Your Extension ID**
+   - After loading your unpacked extension in Chrome, find the extension ID in `chrome://extensions`
+   - It's the string of letters/numbers under the extension name when developer mode is enabled
+
+5. **Update the Manifest File**
+   - Open the `manifest.json` file in your extension folder
+   - Replace the placeholder client ID with your actual client ID:
+   ```json
+   "oauth2": {
+     "client_id": "YOUR_ACTUAL_CLIENT_ID.apps.googleusercontent.com",
+     "scopes": ["https://www.googleapis.com/auth/drive.file"]
+   }
+   ```
+
+6. **Reload the Extension**
+   - After updating the manifest, go to `chrome://extensions` 
+   - Click the refresh icon on your extension
+
+7. **Connect to Google Drive**
+   - Open a new tab to access the extension
+   - Click the "Connect Google Drive" button
+   - Follow the authentication prompts to grant permission
 
 ## Troubleshooting
 

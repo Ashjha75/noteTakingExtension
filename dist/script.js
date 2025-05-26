@@ -5,7 +5,9 @@ const state = {
     currentContent: "",
     directoryHandle: null,
     fileTree: {},
-    hasUnsavedChanges: false
+    hasUnsavedChanges: false,
+    usingGoogleDrive: false,
+    currentGDriveFileId: null
 };
 
 // DOM elements
@@ -17,10 +19,10 @@ let currentFilePathEl;
 let statusBarEl;
 let previewToggleBtn;
 let previewArea;
+let connectDriveBtn;
 
 // Initialize the application
-async function initialize() {
-    // Initialize DOM elements
+async function initialize() {    // Initialize DOM elements
     noteEditor = document.getElementById('noteEditor');
     openFolderBtn = document.getElementById('openFolderBtn');
     newFileBtn = document.getElementById('newFileBtn');
@@ -29,6 +31,7 @@ async function initialize() {
     statusBarEl = document.getElementById('statusBar');
     previewToggleBtn = document.getElementById('previewToggleBtn');
     previewArea = document.getElementById('previewArea');
+    connectDriveBtn = document.getElementById('connectDriveBtn');
     
     // Check if all elements were found
     if (!noteEditor || !openFolderBtn || !fileTreeEl) {
@@ -68,6 +71,11 @@ function setupEventListeners() {
         previewToggleBtn.addEventListener('click', togglePreview);
     }
     
+    // Google Drive connect button
+    if (connectDriveBtn) {
+        connectDriveBtn.addEventListener('click', connectToGoogleDrive);
+    }
+    
     // Keyboard shortcuts
     document.addEventListener('keydown', handleKeyboardShortcuts);
 }
@@ -75,44 +83,56 @@ function setupEventListeners() {
 // Handle the open folder action
 async function openFolder() {
     try {
-        // Check if the File System Access API is available
-        if (!window.showDirectoryPicker) {
-            throw new Error('File System Access API is not supported in this environment');
+        // Try to use the File System Access API if available
+        if (window.showDirectoryPicker) {
+            try {
+                // Request a directory from the user - might fail in extension context
+                const directoryHandle = await window.showDirectoryPicker();
+                state.directoryHandle = directoryHandle;
+                
+                // Clear the file tree UI
+                fileTreeEl.innerHTML = '';
+                
+                // Build the file tree object and UI
+                state.fileTree = await buildFileTree(directoryHandle);
+                renderFileTree();
+                
+                // Update status
+                updateStatusBar(`Folder opened: ${directoryHandle.name}`);
+                return; // Success! Exit the function
+            } catch (fsError) {
+                console.warn('File System Access API failed:', fsError);
+                // Continue to fallback methods below
+            }
         }
         
-        // Request a directory from the user
-        const directoryHandle = await window.showDirectoryPicker();
-        state.directoryHandle = directoryHandle;
+        // FALLBACK 1: Try opening in a regular tab via background script
+        try {
+            // Check if we're in an extension context
+            if (chrome && chrome.runtime && chrome.runtime.sendMessage) {
+                // Ask if user wants to try opening in a new tab
+                if (confirm('File system access is restricted in extensions. Would you like to try opening this app in a regular tab?')) {
+                    chrome.runtime.sendMessage({ action: "openInNewTab" });
+                    return;
+                }
+            }
+        } catch (extError) {
+            console.warn('Not in extension context or messaging failed:', extError);
+        }
         
-        // Clear the file tree UI
-        fileTreeEl.innerHTML = '';
+        // FALLBACK 2: Use improved mock file system
+        alert('Using mock files. You can edit and "save" files, but they will not persist between sessions.\n\nFull file system access is limited in Chrome extensions.');
         
-        // Build the file tree object and UI
-        state.fileTree = await buildFileTree(directoryHandle);
+        // Use enhanced mock file tree with editable files
+        state.fileTree = createMockFileTree();
         renderFileTree();
         
         // Update status
-        updateStatusBar(`Folder opened: ${directoryHandle.name}`);
+        updateStatusBar('Using enhanced mock files', true);
+        
     } catch (error) {
-        // Handle specific error cases
-        if (error.message.includes('not supported') || error.name === 'SecurityError' || error.name === 'NotAllowedError') {
-            const errorMsg = 
-                'Due to Chrome extension security restrictions, the File System Access API is limited.\n\n' +
-                'Using sample mock files instead. You can still test most functionality.';
-            
-            alert(errorMsg);
-            
-            // Use mock file tree instead
-            state.fileTree = createMockFileTree();
-            renderFileTree();
-            
-            updateStatusBar('Using sample files (File System Access restricted)', true);
-            console.error('File System Access error, using mock files:', error);
-        } else {
-            // User likely canceled the folder picker
-            console.log('Folder selection was canceled or failed:', error);
-            updateStatusBar('Folder selection canceled', false);
-        }
+        console.error('Open folder operation failed:', error);
+        updateStatusBar('Folder operation failed', false);
     }
 }
 
@@ -227,6 +247,23 @@ async function openFile(fileNode) {
         }
     }
     
+    // Handle Google Drive files
+    if (state.usingGoogleDrive && fileNode.driveId) {
+        await handleDriveFileClick(fileNode);
+        
+        // Highlight the active file in the file tree
+        clearActiveFileStyles();
+        const fileElements = document.querySelectorAll('.file-item');
+        for (const el of fileElements) {
+            if (el.textContent === fileNode.name) {
+                el.classList.add('active');
+                break;
+            }
+        }
+        
+        return;
+    }
+    
     try {
         // Get the file handle and read its contents
         const fileHandle = fileNode.handle;
@@ -238,6 +275,7 @@ async function openFile(fileNode) {
         state.currentFileHandle = fileHandle;
         state.currentContent = content;
         state.hasUnsavedChanges = false;
+        state.currentGDriveFileId = null; // Reset Google Drive ID when opening a local file
         
         // Update UI
         currentFilePathEl.textContent = fileNode.path;
@@ -358,6 +396,135 @@ async function createNewFile() {
     }
 }
 
+// Connect to Google Drive
+async function connectToGoogleDrive() {
+    try {
+        updateStatusBar('Connecting to Google Drive...', false);
+        
+        // Attempt to authenticate with Google Drive
+        const isAuthenticated = await gDrive.authenticate();
+        
+        if (isAuthenticated) {
+            // Update UI to show connected state
+            connectDriveBtn.textContent = 'Google Drive Connected';
+            connectDriveBtn.classList.add('drive-connected');
+            
+            // Set the state to indicate we're using Google Drive
+            state.usingGoogleDrive = true;
+            
+            // Load notes from Google Drive
+            await loadNotesFromDrive();
+            
+            updateStatusBar('Connected to Google Drive', false);
+        } else {
+            updateStatusBar('Failed to connect to Google Drive', true);
+        }
+    } catch (error) {
+        console.error('Google Drive connection error:', error);
+        updateStatusBar('Error connecting to Google Drive: ' + error.message, true);
+    }
+}
+
+// Load notes from Google Drive
+async function loadNotesFromDrive() {
+    try {
+        const files = await gDrive.listNotes();
+        
+        // Create a file tree structure from the Google Drive files
+        state.fileTree = {
+            name: "Google Drive",
+            kind: "directory",
+            path: "Google Drive",
+            children: []
+        };
+        
+        // Add files to the tree
+        for (const file of files) {
+            state.fileTree.children.push({
+                name: file.name,
+                kind: "file",
+                path: `Google Drive/${file.name}`,
+                driveId: file.id,
+                modifiedTime: file.modifiedTime
+            });
+        }
+        
+        // Sort files by name
+        state.fileTree.children.sort((a, b) => a.name.localeCompare(b.name));
+        
+        // Render the file tree
+        renderFileTree();
+    } catch (error) {
+        console.error('Error loading notes from Google Drive:', error);
+        updateStatusBar('Error loading notes from Google Drive', true);
+    }
+}
+
+// Handle click on a Google Drive file
+async function handleDriveFileClick(fileNode) {
+    try {
+        updateStatusBar(`Loading ${fileNode.name}...`, false);
+        
+        // Get the file content from Google Drive
+        const content = await gDrive.readNote(fileNode.driveId);
+        
+        // Update editor content
+        noteEditor.value = content;
+        state.currentContent = content;
+        state.hasUnsavedChanges = false;
+        state.currentGDriveFileId = fileNode.driveId;
+        
+        // Update UI
+        currentFilePathEl.textContent = fileNode.path;
+        
+        updateStatusBar(`File loaded: ${fileNode.name}`, false);
+    } catch (error) {
+        console.error('Error opening Google Drive file:', error);
+        updateStatusBar('Error opening file from Google Drive', true);
+    }
+}
+
+// Save current file to Google Drive
+async function saveFileToDrive() {
+    try {
+        const content = noteEditor.value;
+        
+        if (state.currentGDriveFileId) {
+            // Update existing file
+            updateStatusBar('Saving to Google Drive...', false);
+            await gDrive.updateNote(state.currentGDriveFileId, content);
+            state.hasUnsavedChanges = false;
+            updateStatusBar('File saved to Google Drive', false);
+        } else {
+            // Create new file
+            const fileName = prompt('Enter a name for your note:', 'Untitled Note.md');
+            
+            if (fileName) {
+                updateStatusBar('Creating file in Google Drive...', false);
+                
+                // Determine mime type based on extension
+                const mimeType = fileName.toLowerCase().endsWith('.md') ? 'text/markdown' : 'text/plain';
+                
+                const response = await gDrive.createNote(fileName, content, mimeType);
+                
+                if (response && response.id) {
+                    state.currentGDriveFileId = response.id;
+                    state.hasUnsavedChanges = false;
+                    currentFilePathEl.textContent = `Google Drive/${fileName}`;
+                    
+                    // Reload file list to show the new file
+                    await loadNotesFromDrive();
+                    
+                    updateStatusBar(`File created: ${fileName}`, false);
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error saving to Google Drive:', error);
+        updateStatusBar('Error saving to Google Drive: ' + error.message, true);
+    }
+}
+
 // Handle keyboard shortcuts
 async function handleKeyboardShortcuts(event) {
     // Ctrl+S / Cmd+S
@@ -377,6 +544,12 @@ async function handleKeyboardShortcuts(event) {
 async function saveCurrentFile() {
     // Get the content from the editor
     const content = noteEditor.value;
+    
+    // If using Google Drive and we have a file ID or are in Google Drive mode
+    if (state.usingGoogleDrive) {
+        await saveFileToDrive();
+        return;
+    }
     
     try {
         // If we have a file handle, save to that file
